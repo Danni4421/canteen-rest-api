@@ -1,7 +1,7 @@
 {
-  "name": "learn-express",
+  "name": "canteen-rest-api",
   "version": "1.0.0",
-  "description": "First Time Learning Express JS",
+  "description": "RESTful API for canteen programs",
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "test:watch": "jest --watchAll --coverage --setupFiles dotenv/config"
   },
   "keywords": [],
-  "author": "",
+  "author": "Aji Hamdani Ahmad",
   "license": "ISC",
   "dependencies": {
     "auto-bind": "^4.0.0",

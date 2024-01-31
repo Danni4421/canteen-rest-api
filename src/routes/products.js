@@ -7,12 +7,13 @@ const productHandler = new ProductHandler(
   {
     product: Product,
   },
-  ProductValidator,
+  ProductValidator
 );
 
 router.post('/', productHandler.postProductHandler);
 router.get('/:id', productHandler.getProductByIdHandler);
 router.get('/', productHandler.getProductsHandler);
+router.put('/:id', productHandler.putProductByIdHandler);
 router.delete('/:id', productHandler.deleteProductByIdHandler);
 
 module.exports = router;

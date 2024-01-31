@@ -23,6 +23,8 @@ app.use('/products', productRoutes);
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
+  console.log(err);
+
   if (err instanceof Error) {
     if (err instanceof ClientError) {
       return res.status(err.statusCode).json({

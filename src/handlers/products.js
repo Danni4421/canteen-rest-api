@@ -1,5 +1,7 @@
 const autoBind = require('auto-bind');
+const mongoose = require('mongoose');
 const NotFoundError = require('../exceptions/client/NotFoundError');
+const InvariantError = require('../exceptions/client/InvariantError');
 
 class ProductHandler {
   constructor(model, validator) {
@@ -10,57 +12,43 @@ class ProductHandler {
   }
 
   async postProductHandler(req, res, next) {
-    const lastInsertedProduct = await this._model.product.findOne({}).sort({ _id: -1 }).limit(1);
-    const id = lastInsertedProduct ? Number(lastInsertedProduct.id) + 1 : 1;
-
     try {
-      await this._validator.validatePostProductPayload(req.body);
-      await this._model.product.create({
-        _id: id,
+      this._validator.validatePostProductPayload(req.body);
+      const insertedProduct = await this._model.product.create({
         ...req.body,
       });
-
-      const insertedProduct = await this._model.product.findById(id);
-
-      if (!insertedProduct) {
-        throw new Error('Gagal menambahkan produk. Terjadi kesalahan pada server.');
-      }
 
       return res.status(200).json({
         status: 'success',
         message: 'Berhasil menambahkan produk',
+        data: {
+          id: insertedProduct._id,
+        },
       });
     } catch (error) {
       next(error);
     }
   }
 
-  async getProductsHandler(req, res, next) {
-    try {
-      const products = await this._model.product.find();
+  async getProductsHandler(req, res) {
+    const products = await this._model.product.find();
 
-      if (products.length === 0) {
-        throw new NotFoundError('Gagal mendapatkan produk. Id tidak ditemukan.');
-      }
-
-      return res.status(200).json({
-        status: 'success',
-        message: 'Berhasil mendapatkan data produk.',
-        data: products,
-      });
-    } catch (error) {
-      next(error);
-    }
+    return res.status(200).json({
+      status: 'success',
+      message: 'Berhasil mendapatkan data produk.',
+      data: products,
+    });
   }
 
   async getProductByIdHandler(req, res, next) {
+    const { id: productId } = req.params;
+
     try {
-      const { id: productId } = req.params;
+      if (!mongoose.isValidObjectId(productId)) throw new InvariantError('Id tidak valid.');
+
       const product = await this._model.product.findById(productId);
 
-      if (!product) {
-        throw new NotFoundError('Gagal mendapatkan produk, Id tidak ditemukan.');
-      }
+      if (!product) throw new NotFoundError('Gagal mendapatkan produk, Id tidak ditemukan.');
 
       return res.status(200).json({
         status: 'success',
@@ -72,17 +60,43 @@ class ProductHandler {
     }
   }
 
+  async putProductByIdHandler(req, res, next) {
+    const { id: productId } = req.params;
+
+    try {
+      if (!mongoose.isValidObjectId(productId)) throw new InvariantError('Id tidak valid.');
+
+      this._validator.validatePutProductPayload(req.body);
+      const updatedProduct = await this._model.product.findOneAndReplace(
+        { _id: productId },
+        { ...req.body }
+      );
+
+      if (!updatedProduct) throw new NotFoundError('Gagal memperbarui produk, Id tidak ditemukan.');
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Berhasil memperbarui produk.',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async deleteProductByIdHandler(req, res, next) {
     const { id: productId } = req.params;
 
     try {
-      await this._model.product.deleteOne({ _id: productId });
+      if (!mongoose.isValidObjectId(productId)) throw new InvariantError('Id tidak valid.');
 
-      const product = await this._model.product.findById({ _id: productId });
+      const deletedProduct = await this._model.product.findOneAndDelete(
+        {
+          _id: productId,
+        },
+        { _id: 1 }
+      );
 
-      if (product) {
-        throw new NotFoundError('Gagal menghapus produk. Id tidak ditemukan.');
-      }
+      if (!deletedProduct) throw new NotFoundError('Gagal menghapus produk, Id tidak ditemukan.');
 
       return res.status(200).json({
         status: 'success',
