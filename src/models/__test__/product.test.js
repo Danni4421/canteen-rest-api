@@ -1,14 +1,18 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const Product = require('../product');
 
 describe('Database Product Model test', () => {
-  let utilities = {
+  const utilities = {
     insertedId: [],
   };
 
   beforeAll(async () => {
     try {
-      await mongoose.connect('mongodb://localhost:27017/kantin');
+      const dbUrl = process.env.DB_CONNECTION || 'mongodb://localhost:27017';
+      const dbName = process.env.DB_NAME || 'kantin';
+
+      await mongoose.connect(`${dbUrl}/${dbName}`);
     } catch (error) {
       console.error('Database connection error:', error);
       throw error;
@@ -29,24 +33,27 @@ describe('Database Product Model test', () => {
   });
 
   it('should perform create and return product correctly', async () => {
-    let insertedProducts = [
+    const insertedProducts = [
       {
+        _id: 1,
         name: 'Nutriboost Mangga',
         price: 7000,
         amount: 5,
-        image: ['nutriboost.jpg', 'nutriboost2.png'],
+        images: ['nutriboost.jpg', 'nutriboost2.png'],
       },
       {
+        _id: 2,
         name: 'Makaroni Pedas',
         price: 500,
         amount: 20,
-        image: ['makaroni.png'],
+        images: ['makaroni.png'],
       },
       {
+        _id: 3,
         name: 'Mini Pizza',
         price: 8000,
         amount: 5,
-        image: ['minipizza.png'],
+        images: ['minipizza.png'],
       },
     ];
 
@@ -55,7 +62,7 @@ describe('Database Product Model test', () => {
         const newProduct = new Product(product);
         utilities.insertedId.push(newProduct._id);
         await newProduct.save();
-      })
+      }),
     );
 
     const product = await Product.findById({
@@ -66,7 +73,7 @@ describe('Database Product Model test', () => {
     expect(product.name).toEqual('Nutriboost Mangga');
     expect(product.price).toEqual(7000);
     expect(product.amount).toEqual(5);
-    expect(product.image).toHaveLength(2);
+    expect(product.images).toHaveLength(2);
   });
 
   it('should perform edit product and return edited product correctly', async () => {
@@ -74,14 +81,14 @@ describe('Database Product Model test', () => {
       name: 'Nutriboost Leci',
       price: 7000,
       amount: 10,
-      image: ['nutriboostleci.jpg'],
+      images: ['nutriboostleci.jpg'],
     };
 
-    await Product.replaceOne(
+    await Product.findOneAndReplace(
       {
         _id: utilities.insertedId[0],
       },
-      mockReplacedProductDetail
+      mockReplacedProductDetail,
     );
 
     const updatedProduct = await Product.findById(utilities.insertedId[0]);
@@ -89,19 +96,22 @@ describe('Database Product Model test', () => {
     expect(updatedProduct.name).toEqual(mockReplacedProductDetail.name);
     expect(updatedProduct.price).toEqual(mockReplacedProductDetail.price);
     expect(updatedProduct.amount).toEqual(mockReplacedProductDetail.amount);
-    expect(updatedProduct.image).toHaveLength(1);
+    expect(updatedProduct.images).toHaveLength(1);
   });
 
   it('should perform delete product correctly', async () => {
     const deletedId = utilities.insertedId[0];
     utilities.insertedId.slice(0, 1);
 
-    await Product.deleteOne({
+    const deletedProduct = await Product.findOneAndDelete({
       _id: deletedId,
+    }, {
+      created_at: 0,
+      updated_at: 0,
     });
 
     const product = await Product.findById(deletedId);
-
     expect(product).toBe(null);
+    expect(deletedProduct._id).toEqual(deletedId);
   });
 });

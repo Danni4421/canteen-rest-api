@@ -1,7 +1,7 @@
-const InvariantError = require('../../exceptions/client/InvariantError');
 const { PostProductSchemaValidator, PutProductSchemaValidator } = require('./schema');
+const InvariantError = require('../../exceptions/client/InvariantError');
 
-const ProductValidator = {
+const ProductsValidator = {
   validatePostProductPayload: (payload) => {
     const validationResult = PostProductSchemaValidator.validate(payload);
 
@@ -19,4 +19,4 @@ const ProductValidator = {
   },
 };
 
-module.exports = ProductValidator;
+module.exports = ProductsValidator;

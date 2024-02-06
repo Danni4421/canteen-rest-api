@@ -1,11 +1,8 @@
 const autoBind = require('auto-bind');
-const mongoose = require('mongoose');
-const NotFoundError = require('../exceptions/client/NotFoundError');
-const InvariantError = require('../exceptions/client/InvariantError');
 
-class ProductHandler {
-  constructor(model, validator) {
-    this._model = model;
+class ProductsHandler {
+  constructor(service, validator) {
+    this._service = service;
     this._validator = validator;
 
     autoBind(this);
@@ -14,9 +11,7 @@ class ProductHandler {
   async postProductHandler(req, res, next) {
     try {
       this._validator.validatePostProductPayload(req.body);
-      const insertedProduct = await this._model.product.create({
-        ...req.body,
-      });
+      const insertedProduct = await this._service.productsService.addProduct(req.body);
 
       return res.status(200).json({
         status: 'success',
@@ -31,7 +26,7 @@ class ProductHandler {
   }
 
   async getProductsHandler(req, res) {
-    const products = await this._model.product.find();
+    const products = await this._service.productsService.getProducts();
 
     return res.status(200).json({
       status: 'success',
@@ -41,14 +36,8 @@ class ProductHandler {
   }
 
   async getProductByIdHandler(req, res, next) {
-    const { id: productId } = req.params;
-
     try {
-      if (!mongoose.isValidObjectId(productId)) throw new InvariantError('Id tidak valid.');
-
-      const product = await this._model.product.findById(productId);
-
-      if (!product) throw new NotFoundError('Gagal mendapatkan produk, Id tidak ditemukan.');
+      const product = await this._service.productsService.getProductById(req.params.id);
 
       return res.status(200).json({
         status: 'success',
@@ -61,18 +50,9 @@ class ProductHandler {
   }
 
   async putProductByIdHandler(req, res, next) {
-    const { id: productId } = req.params;
-
     try {
-      if (!mongoose.isValidObjectId(productId)) throw new InvariantError('Id tidak valid.');
-
       this._validator.validatePutProductPayload(req.body);
-      const updatedProduct = await this._model.product.findOneAndReplace(
-        { _id: productId },
-        { ...req.body }
-      );
-
-      if (!updatedProduct) throw new NotFoundError('Gagal memperbarui produk, Id tidak ditemukan.');
+      await this._service.productsService.updateProduct(req.params.id, req.body);
 
       return res.status(200).json({
         status: 'success',
@@ -84,19 +64,8 @@ class ProductHandler {
   }
 
   async deleteProductByIdHandler(req, res, next) {
-    const { id: productId } = req.params;
-
     try {
-      if (!mongoose.isValidObjectId(productId)) throw new InvariantError('Id tidak valid.');
-
-      const deletedProduct = await this._model.product.findOneAndDelete(
-        {
-          _id: productId,
-        },
-        { _id: 1 }
-      );
-
-      if (!deletedProduct) throw new NotFoundError('Gagal menghapus produk, Id tidak ditemukan.');
+      await this._service.productsService.deleteProduct(req.params.id);
 
       return res.status(200).json({
         status: 'success',
@@ -108,4 +77,4 @@ class ProductHandler {
   }
 }
 
-module.exports = ProductHandler;
+module.exports = ProductsHandler;

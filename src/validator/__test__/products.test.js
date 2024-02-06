@@ -23,7 +23,7 @@ describe('Product Validator test', () => {
         name: 'Roti Bakar',
         price: '15000',
         amount: 1,
-        image: [1, true, null],
+        images: [1, true, null],
       };
 
       try {
@@ -31,7 +31,7 @@ describe('Product Validator test', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(InvariantError);
         expect(error.statusCode).toEqual(400);
-        expect(error.message).toEqual('"image[0]" must be a string');
+        expect(error.message).toEqual('"images[0]" must be a string');
       }
     });
 
@@ -40,7 +40,7 @@ describe('Product Validator test', () => {
         name: 'Roti Bakar',
         price: 15000,
         amount: 5,
-        image: ['image1.png', 'image2.jpg'],
+        images: ['image1.png', 'image2.jpg'],
       };
 
       try {
@@ -72,7 +72,7 @@ describe('Product Validator test', () => {
         name: 'Roti Bakar Coklat',
         price: true,
         amount: 1,
-        image: [],
+        images: [],
       };
 
       try {
@@ -89,7 +89,7 @@ describe('Product Validator test', () => {
         name: 'Roti Bakar Coklat',
         price: 8000,
         amount: 5,
-        image: ['rotibakar1.png', 'rotibakar2.jpg'],
+        images: ['rotibakar1.png', 'rotibakar2.jpg'],
       };
 
       try {

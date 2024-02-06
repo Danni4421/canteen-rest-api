@@ -1,19 +1,23 @@
 const router = require('express').Router();
 const Product = require('../models/product');
-const ProductHandler = require('../handlers/products');
-const ProductValidator = require('../validator/products');
+const ProductsHandler = require('../handlers/products');
+const ProductsService = require('../services/mongo/products/ProductsService');
+const ProductsValidator = require('../validator/products');
+const { isAuthenticatedMiddleware } = require('../middlewares/authentication');
 
-const productHandler = new ProductHandler(
+const productHandler = new ProductsHandler(
   {
-    product: Product,
+    productsService: new ProductsService({
+      product: Product,
+    }),
   },
-  ProductValidator
+  ProductsValidator,
 );
 
-router.post('/', productHandler.postProductHandler);
+router.post('/', isAuthenticatedMiddleware, productHandler.postProductHandler);
 router.get('/:id', productHandler.getProductByIdHandler);
 router.get('/', productHandler.getProductsHandler);
-router.put('/:id', productHandler.putProductByIdHandler);
-router.delete('/:id', productHandler.deleteProductByIdHandler);
+router.put('/:id', isAuthenticatedMiddleware, productHandler.putProductByIdHandler);
+router.delete('/:id', isAuthenticatedMiddleware, productHandler.deleteProductByIdHandler);
 
 module.exports = router;

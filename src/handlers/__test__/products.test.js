@@ -1,5 +1,5 @@
+const mongoose = require('mongoose');
 const ProductHandler = require('../products');
-const { generateObjectId } = require('../../../tests/HandlerTestHelper');
 const InvariantError = require('../../exceptions/client/InvariantError');
 const NotFoundError = require('../../exceptions/client/NotFoundError');
 
@@ -13,18 +13,20 @@ describe('Product Handler test', () => {
       };
 
       const mockProductValidator = {
-        validatePostProductPayload: jest.fn().mockImplementation((payload) => {
-          throw new InvariantError(`"amount" must be a number`);
+        validatePostProductPayload: jest.fn().mockImplementation(() => {
+          throw new InvariantError('"amount" must be a number');
         }),
       };
-      const mockRequest = { body: { ...badProductPayload } };
+      const mockRequest = {
+        body: badProductPayload,
+      };
       const mockNext = jest.fn();
 
       const productHandler = new ProductHandler(null, mockProductValidator);
       await productHandler.postProductHandler(mockRequest, null, mockNext);
 
       expect(mockProductValidator.validatePostProductPayload).toHaveBeenCalledWith(
-        badProductPayload
+        badProductPayload,
       );
       expect(mockNext).toHaveBeenCalledWith(new InvariantError('"amount" must be a number'));
     });
@@ -34,33 +36,49 @@ describe('Product Handler test', () => {
         name: 'Tahu Bulat',
         price: 2000,
         amount: 5,
-        image: ['tahubulat.jpg', 'tahubulat1.png'],
+        images: ['tahubulat.jpg', 'tahubulat1.png'],
       };
-      const mockRequest = { body: { ...mockProductPayload } };
+      const mockRequest = {
+        body: mockProductPayload,
+      };
       const mockResponse = {
         status: jest.fn(),
         json: jest.fn(),
       };
+      mockResponse.status.mockImplementation(() => mockResponse);
+      mockResponse.json.mockImplementation((response) => response);
       const mockNext = jest.fn().mockImplementation((error) => error);
 
-      const mockModel = {
-        product: {
-          create: jest.fn().mockImplementation(() => Promise.resolve()),
-        },
-      };
       const mockProductValidator = {
         validatePostProductPayload: jest.fn(),
       };
 
-      const productHandler = new ProductHandler(mockModel, mockProductValidator);
+      const mockProductsService = {
+        addProduct: jest.fn().mockImplementation(() => Promise.resolve({
+          _id: 'this is product id',
+        })),
+      };
+
+      const productHandler = new ProductHandler(
+        {
+          productsService: mockProductsService,
+        },
+        mockProductValidator,
+      );
+
       await productHandler.postProductHandler(mockRequest, mockResponse, mockNext);
 
       expect(mockProductValidator.validatePostProductPayload).toHaveBeenCalledWith(
-        mockProductPayload
+        mockProductPayload,
       );
-      expect(mockModel.product.create).toHaveBeenCalledWith({ ...mockProductPayload });
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockNext).toHaveReturned();
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        status: 'success',
+        message: 'Berhasil menambahkan produk',
+        data: {
+          id: 'this is product id',
+        },
+      });
     });
   });
 
@@ -68,28 +86,20 @@ describe('Product Handler test', () => {
     it('should return all product', async () => {
       const mockProducts = [
         {
-          _id: 'hjru87keio45o23klk34j',
+          _id: new mongoose.Types.ObjectId(),
           name: 'Martabak Manis',
           price: 20000,
           amount: 10,
-          image: [],
+          images: [],
         },
         {
-          _id: 'yj5uj7gehgo4cov3blh25h',
+          _id: new mongoose.Types.ObjectId(),
           name: 'Nasi Goreng',
           price: 25000,
           amount: 5,
-          image: ['nasigoreng01.jpg'],
+          images: ['nasigoreng01.jpg'],
         },
       ];
-
-      const mockModel = {
-        product: {
-          find: jest.fn().mockImplementation(() => {
-            return Promise.resolve(mockProducts);
-          }),
-        },
-      };
 
       const mockResponse = {
         status: jest.fn(),
@@ -99,7 +109,13 @@ describe('Product Handler test', () => {
       mockResponse.status.mockImplementation(() => mockResponse);
       mockResponse.json.mockImplementation((response) => response);
 
-      const productHandler = new ProductHandler(mockModel, null);
+      const mockProductsService = {
+        getProducts: jest.fn().mockImplementation(() => Promise.resolve(mockProducts)),
+      };
+
+      const productHandler = new ProductHandler({
+        productsService: mockProductsService,
+      }, null);
       const products = await productHandler.getProductsHandler(null, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
@@ -116,68 +132,43 @@ describe('Product Handler test', () => {
   });
 
   describe('getProductByIdHandler function', () => {
-    it('should throw InvariantError when given invalid id', async () => {
+    it('should throw error when the id is not valid', async () => {
       const mockRequest = {
         params: {
-          id: 'xxxx',
-        },
-      };
-
-      const mockNext = jest.fn();
-
-      const productHandler = new ProductHandler(null, null);
-      await productHandler.getProductByIdHandler(mockRequest, null, mockNext);
-
-      expect(mockNext).toHaveBeenCalledWith(new InvariantError('Id tidak valid.'));
-    });
-
-    it('should throw NotFoundError when the id is not valid', async () => {
-      const notFoundProductId = generateObjectId();
-
-      const mockRequest = {
-        params: {
-          id: notFoundProductId, // asume the id is undefined
+          id: 'xxxx', // asume it's undefined
         },
       };
       const mockNext = jest.fn();
 
-      const mockModel = {
-        product: {
-          findById: jest.fn().mockImplementation(() => Promise.resolve(null)),
-        },
+      const mockProductsService = {
+        getProductById: jest.fn().mockImplementation(() => {
+          throw new NotFoundError('Gagal mendapatkan produk, Id tidak ditemukan.');
+        }),
       };
 
-      const productHandler = new ProductHandler(mockModel, null);
+      const productHandler = new ProductHandler({
+        productsService: mockProductsService,
+      }, null);
       await productHandler.getProductByIdHandler(mockRequest, null, mockNext);
 
-      expect(mockModel.product.findById).toHaveBeenCalledWith(mockRequest.params.id);
+      expect(mockProductsService.getProductById).toHaveBeenCalledWith(mockRequest.params.id);
       expect(mockNext).toHaveBeenCalledWith(
-        new NotFoundError('Gagal mendapatkan produk, Id tidak ditemukan.')
+        new NotFoundError('Gagal mendapatkan produk, Id tidak ditemukan.'),
       );
     });
 
     it('should return valid product when give valid id', async () => {
-      const productId = generateObjectId();
-
       const mockProduct = {
-        _id: productId,
+        _id: 1,
         name: 'Nasi Goreng',
         price: 25000,
         amount: 5,
-        image: ['nasigoreng01.jpg'],
+        images: ['nasigoreng01.jpg'],
       };
-      const mockModel = {
-        product: {
-          findById: jest.fn().mockImplementation((id) => {
-            if (id === mockProduct._id) {
-              return Promise.resolve(mockProduct);
-            }
-          }),
-        },
-      };
+
       const mockRequest = {
         params: {
-          id: productId,
+          id: 1,
         },
       };
       const mockResponse = {
@@ -189,14 +180,20 @@ describe('Product Handler test', () => {
 
       const mockNext = jest.fn();
 
-      const productHandler = new ProductHandler(mockModel, null);
+      const mockProductsService = {
+        getProductById: jest.fn().mockImplementation(() => Promise.resolve(mockProduct)),
+      };
+
+      const productHandler = new ProductHandler({
+        productsService: mockProductsService,
+      }, null);
       const product = await productHandler.getProductByIdHandler(
         mockRequest,
         mockResponse,
-        mockNext
+        mockNext,
       );
 
-      expect(mockModel.product.findById).toHaveBeenCalledWith(mockRequest.params.id);
+      expect(mockProductsService.getProductById).toHaveBeenCalledWith(mockRequest.params.id);
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         status: 'success',
@@ -213,73 +210,21 @@ describe('Product Handler test', () => {
   });
 
   describe('putProductByIdHandler function', () => {
-    it('should throw InvariantError when given invalid id', async () => {
-      const mockRequest = {
-        params: {
-          id: 'xxxx',
-        },
-      };
-
-      const mockNext = jest.fn();
-
-      const productHandler = new ProductHandler(null, null);
-      await productHandler.putProductByIdHandler(mockRequest, null, mockNext);
-
-      expect(mockNext).toHaveBeenCalledWith(new InvariantError('Id tidak valid.'));
-    });
-
-    it('should throw NotFoundError when given not found id', async () => {
-      const notFoundProductId = generateObjectId();
-
-      const mockUpdatedProduct = {
-        name: 'Teh Anget',
-        price: 2000,
-        amount: 5,
-        image: [],
-      };
-      const mockRequest = { params: { id: notFoundProductId }, body: mockUpdatedProduct };
-      const mockNext = jest.fn();
-
-      const mockModel = {
-        product: {
-          findOneAndReplace: jest.fn().mockImplementation(() => Promise.resolve(null)),
-        },
-      };
-
-      const mockValidator = {
-        validatePutProductPayload: jest.fn(),
-      };
-
-      const productHandler = new ProductHandler(mockModel, mockValidator);
-      await productHandler.putProductByIdHandler(mockRequest, null, mockNext);
-
-      expect(mockModel.product.findOneAndReplace).toHaveBeenCalledWith(
-        { _id: mockRequest.params.id },
-        mockRequest.body
-      );
-      expect(mockNext).toHaveBeenCalledWith(
-        new NotFoundError('Gagal memperbarui produk, Id tidak ditemukan.')
-      );
-    });
-
-    it('should throw InvariantError when given bad payload', async () => {
-      const productId = generateObjectId();
-
+    it('should throw error when given bad payload', async () => {
       const mockBadPayload = {
         name: true,
         price: null,
         amount: 1,
-        image: [],
+        images: [],
       };
 
-      const mockRequest = { params: { id: productId }, body: mockBadPayload };
-      const mockNext = jest.fn();
-
-      const mockModel = {
-        product: {
-          findOneAndReplace: jest.fn(),
+      const mockRequest = {
+        params: {
+          id: 1,
         },
+        body: mockBadPayload,
       };
+      const mockNext = jest.fn();
 
       const mockValidator = {
         validatePutProductPayload: jest.fn().mockImplementation(() => {
@@ -287,17 +232,51 @@ describe('Product Handler test', () => {
         }),
       };
 
-      const productHandler = new ProductHandler(mockModel, mockValidator);
+      const productHandler = new ProductHandler(null, mockValidator);
       await productHandler.putProductByIdHandler(mockRequest, null, mockNext);
 
       expect(mockValidator.validatePutProductPayload).toHaveBeenCalledWith(mockBadPayload);
-      expect(mockModel.product.findOneAndReplace).not.toHaveBeenCalled();
       expect(mockNext).toHaveBeenCalledWith(new InvariantError('"name" must be a string'));
     });
 
-    it('should perform edit product correctly', async () => {
-      const productId = generateObjectId();
+    it('should throw error when given not found id', async () => {
+      const mockUpdatedProduct = {
+        name: 'Teh Anget',
+        price: 2000,
+        amount: 5,
+        image: [],
+      };
+      const mockRequest = {
+        params: {
+          id: 'xxx',
+        },
+        body: mockUpdatedProduct,
+      };
+      const mockNext = jest.fn();
 
+      const mockValidator = {
+        validatePutProductPayload: jest.fn(),
+      };
+
+      const mockProductsService = {
+        updateProduct: jest.fn().mockImplementation(() => {
+          throw new NotFoundError('Gagal memperbarui produk, Id tidak ditemukan.');
+        }),
+      };
+
+      const productHandler = new ProductHandler({
+        productsService: mockProductsService,
+      }, mockValidator);
+      await productHandler.putProductByIdHandler(mockRequest, null, mockNext);
+
+      expect(mockProductsService.updateProduct)
+        .toHaveBeenCalledWith(mockRequest.params.id, mockRequest.body);
+      expect(mockNext).toHaveBeenCalledWith(
+        new NotFoundError('Gagal memperbarui produk, Id tidak ditemukan.'),
+      );
+    });
+
+    it('should perform edit product correctly', async () => {
       const mockEditPayload = {
         name: 'Nasi Goreng',
         price: 7000,
@@ -307,7 +286,7 @@ describe('Product Handler test', () => {
 
       const mockRequest = {
         params: {
-          id: productId,
+          id: 1,
         },
         body: mockEditPayload,
       };
@@ -321,35 +300,29 @@ describe('Product Handler test', () => {
 
       const mockNext = jest.fn();
 
-      const mockModel = {
-        product: {
-          findOneAndReplace: jest
-            .fn()
-            .mockImplementation(() => Promise.resolve({ _id: productId })),
-        },
-      };
-
       const mockValidator = {
         validatePutProductPayload: jest.fn(),
       };
 
-      const productHandler = new ProductHandler(mockModel, mockValidator);
-      const response = await productHandler.putProductByIdHandler(
+      const mockProductsService = {
+        updateProduct: jest.fn().mockImplementation(() => Promise.resolve()),
+      };
+
+      const productHandler = new ProductHandler({
+        productsService: mockProductsService,
+      }, mockValidator);
+      await productHandler.putProductByIdHandler(
         mockRequest,
         mockResponse,
-        mockNext
+        mockNext,
       );
 
-      expect(mockModel.product.findOneAndReplace).toHaveBeenCalledWith(
-        { _id: mockRequest.params.id },
-        mockEditPayload
+      expect(mockProductsService.updateProduct).toHaveBeenCalledWith(
+        mockRequest.params.id,
+        mockRequest.body,
       );
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        status: 'success',
-        message: 'Berhasil memperbarui produk.',
-      });
-      expect(response).toStrictEqual({
         status: 'success',
         message: 'Berhasil memperbarui produk.',
       });
@@ -357,51 +330,34 @@ describe('Product Handler test', () => {
   });
 
   describe('deleteProductByIdHandler function', () => {
-    it('should throw InvariantError when given invalid id', async () => {
+    it('should throw error when given not found id', async () => {
       const mockRequest = {
         params: {
-          _id: 'xxxx',
-        },
-      };
-
-      const mockNext = jest.fn();
-
-      const productHandler = new ProductHandler(null, null);
-      await productHandler.deleteProductByIdHandler(mockRequest, null, mockNext);
-
-      expect(mockNext).toHaveBeenCalledWith(new InvariantError('Id tidak valid.'));
-    });
-
-    it('should throw NotFoundError when given not found id', async () => {
-      const notFoundProductId = generateObjectId();
-
-      const mockRequest = {
-        params: {
-          id: notFoundProductId,
+          id: 'xxxx', // let say it's undefined
         },
       };
       const mockNext = jest.fn();
 
-      const mockModel = {
-        product: {
-          findOneAndDelete: jest.fn().mockImplementation(() => Promise.resolve(null)),
-        },
+      const mockProductsService = {
+        deleteProduct: jest.fn().mockImplementation(() => {
+          throw new NotFoundError('Gagal menghapus produk, Id tidak ditemukan.');
+        }),
       };
 
-      const productHandler = new ProductHandler(mockModel, null);
+      const productHandler = new ProductHandler({
+        productsService: mockProductsService,
+      }, null);
       await productHandler.deleteProductByIdHandler(mockRequest, null, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(
-        new NotFoundError('Gagal menghapus produk, Id tidak ditemukan.')
+        new NotFoundError('Gagal menghapus produk, Id tidak ditemukan.'),
       );
     });
 
     it('should perform delete product correctly', async () => {
-      const productId = generateObjectId();
-
       const mockRequest = {
         params: {
-          id: productId,
+          id: 1,
         },
       };
 
@@ -414,30 +370,23 @@ describe('Product Handler test', () => {
 
       const mockNext = jest.fn();
 
-      const mockModel = {
-        product: {
-          findOneAndDelete: jest.fn().mockImplementation(() => Promise.resolve({ _id: productId })),
-        },
+      const mockProductsService = {
+        deleteProduct: jest.fn().mockImplementation(() => Promise.resolve()),
       };
 
-      const productHandler = new ProductHandler(mockModel, null);
-      const response = await productHandler.deleteProductByIdHandler(
+      const productHandler = new ProductHandler({
+        productsService: mockProductsService,
+      }, null);
+      await productHandler.deleteProductByIdHandler(
         mockRequest,
         mockResponse,
-        mockNext
+        mockNext,
       );
 
-      expect(mockModel.product.findOneAndDelete).toHaveBeenCalledWith(
-        { _id: productId },
-        { _id: 1 }
-      );
+      expect(mockProductsService.deleteProduct).toHaveBeenCalledWith(mockRequest.params.id);
       expect(mockNext).not.toHaveBeenCalled();
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        status: 'success',
-        message: 'Berhasil menghapus produk.',
-      });
-      expect(response).toStrictEqual({
         status: 'success',
         message: 'Berhasil menghapus produk.',
       });
