@@ -7,7 +7,7 @@ class CartsService {
   }
 
   async addCart(userId, items) {
-    const insertedCart = this._model.cart.create({
+    const insertedCart = await this._model.cart.create({
       userId,
       items,
     });
