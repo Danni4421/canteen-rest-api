@@ -94,6 +94,18 @@ class UsersService {
 
     return user;
   }
+
+  async verifyUserIsExists(userId) {
+    const user = await this._model.user.findOne({
+      _id: userId,
+    }, {
+      _id: 1,
+    });
+
+    if (!user) {
+      throw new NotFoundError('Verifikasi user gagal, Id tidak ditemukan.');
+    }
+  }
 }
 
 module.exports = UsersService;
