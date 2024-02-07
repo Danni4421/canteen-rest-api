@@ -250,4 +250,35 @@ describe('User service test', () => {
       expect(verifiedUser).toStrictEqual(mockVerifiedUser);
     });
   });
+
+  describe('Verify user is exists function test', () => {
+    it('should throw error when user is not found', async () => {
+      const mockUserModel = {
+        findOne: jest.fn().mockImplementation(() => Promise.resolve(null)),
+      };
+
+      const usersService = new UsersService({
+        user: mockUserModel,
+      });
+
+      await expect(usersService.verifyUserIsExists('xxxx')).rejects.toThrow(
+        new NotFoundError('Verifikasi user gagal, Id tidak ditemukan.'),
+      );
+    });
+
+    it('should perform verify user is exists when given valid user id', async () => {
+      const userId = new mongoose.Types.ObjectId();
+      const mockUserModel = {
+        findOne: jest.fn().mockImplementation(() => Promise.resolve({
+          _id: userId,
+        })),
+      };
+
+      const usersService = new UsersService({
+        user: mockUserModel,
+      });
+
+      await expect(usersService.verifyUserIsExists(userId)).resolves.not.toThrow(NotFoundError);
+    });
+  });
 });

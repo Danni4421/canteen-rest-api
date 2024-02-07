@@ -34,16 +34,20 @@ describe('Database User Model test', () => {
     const insertedUser = [
       {
         username: 'user1',
-        firstname: 'yudi',
-        lastname: 'junaidi',
+        fullname: {
+          firstname: 'yudi',
+          lastname: 'junaidi',
+        },
         email: 'user1@kantinjti.com',
         password: '12345678',
         role: 'admin',
       },
       {
         username: 'user2',
-        firstname: 'jupri',
-        lastname: 'sukirman',
+        fullname: {
+          firstname: 'jupri',
+          lastname: 'sukirman',
+        },
         email: 'user2@kantinjti.com',
         password: '87654321',
         role: 'user',
@@ -52,13 +56,7 @@ describe('Database User Model test', () => {
 
     await Promise.all(
       insertedUser.map(async (user) => {
-        const newUser = new User({
-          ...user,
-          fullname: {
-            firstname: user.firstname,
-            lastname: user.lastname,
-          },
-        });
+        const newUser = new User(user);
         utilities.insertedId.push(newUser._id);
         await newUser.save();
       }),
