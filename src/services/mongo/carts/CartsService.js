@@ -34,6 +34,8 @@ class CartsService {
       userId,
     }, {
       items,
+    }, {
+      new: true,
     });
 
     if (!updatedCart) {
