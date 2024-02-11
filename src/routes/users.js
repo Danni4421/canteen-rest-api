@@ -34,15 +34,15 @@ const cartsHandler = new CartsHandler(
   CartValidator,
 );
 
-router.post('/', usersHandler.postUsersHandler);
-router.get('/me', isAuthenticatedMiddleware, usersHandler.getUserByIdHandler);
-router.put('/:id', isAuthenticatedMiddleware, usersHandler.putUserByIdHandler);
-router.delete('/:id', isAuthenticatedMiddleware, usersHandler.deleteUserByIdHandler);
-
 // User Cart Routes
 router.post('/cart', isAuthenticatedMiddleware, cartsHandler.postCartHandler);
 router.get('/cart', isAuthenticatedMiddleware, cartsHandler.getCartHandler);
 router.put('/cart', isAuthenticatedMiddleware, cartsHandler.putCartHandler);
 router.delete('/cart', isAuthenticatedMiddleware, cartsHandler.deleteCartHandler);
+
+router.post('/', usersHandler.postUsersHandler);
+router.get('/me', isAuthenticatedMiddleware, usersHandler.getUserByIdHandler);
+router.put('/:id', isAuthenticatedMiddleware, usersHandler.putUserByIdHandler);
+router.delete('/:id', isAuthenticatedMiddleware, usersHandler.deleteUserByIdHandler);
 
 module.exports = router;

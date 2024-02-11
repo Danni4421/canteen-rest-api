@@ -58,6 +58,11 @@ describe('Database Transaction Model test', () => {
             amount: 2,
             subtotal: 30000,
           },
+          {
+            productId: 2,
+            amount: 1,
+            subtotal: 15000,
+          },
         ],
         status: 'decline',
       },

@@ -12,7 +12,6 @@ const PostTransactionSchemaValidator = Joi.object({
   items: Joi.array().items(Joi.object({
     productId: Joi.number().required(),
     amount: Joi.number().min(1).required(),
-    subtotal: Joi.number().required(),
   })).min(1).required(),
 });
 

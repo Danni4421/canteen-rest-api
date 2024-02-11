@@ -9,6 +9,7 @@ const cors = require('cors');
 const userRoutes = require('./routes/users');
 const authenticationRoutes = require('./routes/authentications');
 const productRoutes = require('./routes/products');
+const transactionRoutes = require('./routes/transactions');
 
 /** Custom Error */
 const ClientError = require('./exceptions/client/ClientError');
@@ -62,6 +63,7 @@ passport.use(
 app.use('/authentications', authenticationRoutes);
 app.use('/users', userRoutes);
 app.use('/products', productRoutes);
+app.use('/transactions', transactionRoutes);
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {

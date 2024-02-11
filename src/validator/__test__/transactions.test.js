@@ -49,7 +49,6 @@ describe('Transaction validator test', () => {
           {
             productId: '1',
             amount: 1,
-            subtotal: 2000,
           },
         ],
       };
@@ -85,12 +84,10 @@ describe('Transaction validator test', () => {
           {
             productId: 1,
             amount: 1,
-            subtotal: 30000,
           },
           {
             productId: 2,
             amount: 2,
-            subtotal: 40000,
           },
         ],
       };

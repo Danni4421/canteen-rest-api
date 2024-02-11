@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const TransactionsService = require('../transactions/TransactionsService');
 const NotFoundError = require('../../../exceptions/client/NotFoundError');
+const InvariantError = require('../../../exceptions/client/InvariantError');
 
 describe('Transaction service test', () => {
   describe('Add transaction function test', () => {
@@ -63,8 +64,15 @@ describe('Transaction service test', () => {
           })),
       };
 
+      const mockProductModel = {
+        updateOne: jest
+          .fn()
+          .mockImplementation(() => Promise.resolve()),
+      };
+
       const transactionsService = new TransactionsService({
         transaction: mockTransactionModel,
+        product: mockProductModel,
       });
 
       const insertedTransactionDocument = await transactionsService.addTransaction(
@@ -88,7 +96,7 @@ describe('Transaction service test', () => {
         transaction: mockTransactionModel,
       });
 
-      await expect(transactionsService.getUserTransaction('xxxx'))
+      await expect(transactionsService.getUserTransactions('xxxx'))
         .rejects.toThrow(
           new NotFoundError('Gagal mendapatkan transaksi, Id tidak ditemukan.'),
         );
@@ -136,7 +144,7 @@ describe('Transaction service test', () => {
         transaction: mockTransactionModel,
       });
 
-      const userTransactions = await transactionsService.getUserTransaction(
+      const userTransactions = await transactionsService.getUserTransactions(
         new mongoose.Types.ObjectId(),
       );
 
@@ -148,8 +156,8 @@ describe('Transaction service test', () => {
     });
   });
 
-  describe('Update transaction service function test', () => {
-    it('should throw error when transaction not found', async () => {
+  describe('Decline transaction service function test', () => {
+    it('should throw not found error when given not found transaction', async () => {
       const mockTransactionModel = {
         findOneAndUpdate: jest
           .fn()
@@ -160,25 +168,69 @@ describe('Transaction service test', () => {
         transaction: mockTransactionModel,
       });
 
-      await expect(transactionsService.updateTransaction('xxx', {}))
+      await expect(transactionsService.declineTransaction('xxx'))
         .rejects.toThrow(
           new NotFoundError('Gagal memperbarui transaksi, Id tidak ditemukan.'),
         );
     });
 
-    it('should perform update transaction service correctly', async () => {
-      const mockRequestPayload = {
-        transactionId: new mongoose.Types.ObjectId(),
-        payload: {
-          status: 'done',
-        },
-      };
-
+    it('should perform decline transaction service function correctly', async () => {
       const mockTransactionModel = {
         findOneAndUpdate: jest
           .fn()
           .mockImplementation(() => Promise.resolve({
-            status: 'done',
+            _id: new mongoose.Types.ObjectId(),
+            items: [
+              {
+                productId: 1,
+                amount: 2,
+                subtotal: 20000,
+              },
+            ],
+          })),
+      };
+
+      const mockProductModel = {
+        updateOne: jest
+          .fn()
+          .mockImplementation(() => Promise.resolve({})),
+      };
+
+      const transactionsService = new TransactionsService({
+        transaction: mockTransactionModel,
+        product: mockProductModel,
+      });
+
+      expect(await transactionsService.declineTransaction(
+        new mongoose.Types.ObjectId(),
+      )).toBeUndefined();
+    });
+  });
+
+  describe('Complete transaction service function test', () => {
+    it('should throw error when given not found transaction', async () => {
+      const mockTransactionModel = {
+        findOneAndUpdate: jest
+          .fn()
+          .mockImplementation(() => Promise.resolve(null)),
+      };
+
+      const transactionsService = new TransactionsService({
+        transaction: mockTransactionModel,
+      });
+
+      await expect(transactionsService.completeTransaction('xxx'))
+        .rejects.toThrow(
+          new NotFoundError('Gagal memperbarui transaksi, Id tidak ditemukan.'),
+        );
+    });
+
+    it('should perform complete transaction service function correctly', async () => {
+      const mockTransactionModel = {
+        findOneAndUpdate: jest
+          .fn()
+          .mockImplementation(() => Promise.resolve({
+            _id: new mongoose.Types.ObjectId(),
           })),
       };
 
@@ -186,9 +238,9 @@ describe('Transaction service test', () => {
         transaction: mockTransactionModel,
       });
 
-      await expect(transactionsService
-        .updateTransaction(mockRequestPayload.transactionId, mockRequestPayload.payload))
-        .resolves.not.toThrow(Error);
+      expect(await transactionsService.completeTransaction(
+        new mongoose.Types.ObjectId(),
+      )).toBeUndefined();
     });
   });
 
@@ -225,6 +277,94 @@ describe('Transaction service test', () => {
 
       await expect(transactionsService.deleteTransaction(new mongoose.Types.ObjectId()))
         .resolves.not.toThrow(NotFoundError);
+    });
+  });
+
+  describe('Verify transaction service function test', () => {
+    it('should throw error when product not found', async () => {
+      const transactionItems = [
+        {
+          productId: 1,
+          amount: 2,
+        },
+      ];
+
+      const mockProductModel = {
+        find: jest
+          .fn()
+          .mockImplementation(() => Promise.resolve([])),
+      };
+
+      const transactionsService = new TransactionsService({
+        product: mockProductModel,
+      });
+
+      await expect(transactionsService.verifyTransactionItems(transactionItems))
+        .rejects.toThrow(
+          new InvariantError('Transaksi gagal, Produk tidak ada.'),
+        );
+    });
+
+    it('should throw error when product amount is not enough', async () => {
+      const transactionItems = [
+        {
+          productId: 1,
+          amount: 2,
+        },
+      ];
+
+      const mockProductModel = {
+        find: jest
+          .fn()
+          .mockImplementation(() => Promise.resolve([
+            {
+              _id: 1,
+              amount: 1,
+              price: 15000,
+            },
+          ])),
+      };
+
+      const transactionsService = new TransactionsService({
+        product: mockProductModel,
+      });
+
+      await expect(transactionsService.verifyTransactionItems(transactionItems))
+        .rejects.toThrow(
+          new InvariantError('Transaksi gagal, Jumlah produk tidak cukup.'),
+        );
+    });
+
+    it('should perform verify transaction items service correctly', async () => {
+      const transactionItems = [
+        {
+          productId: 1,
+          amount: 2,
+        },
+      ];
+
+      const mockProductModel = {
+        find: jest
+          .fn()
+          .mockImplementation(() => Promise.resolve([
+            {
+              _id: 1,
+              amount: 3,
+              price: 15000,
+            },
+          ])),
+      };
+
+      const transactionsService = new TransactionsService({
+        product: mockProductModel,
+      });
+
+      const validatedItems = await transactionsService
+        .verifyTransactionItems(transactionItems);
+
+      expect(validatedItems[0].productId).toEqual(transactionItems[0].productId);
+      expect(validatedItems[0].amount).toEqual(transactionItems[0].amount);
+      expect(validatedItems[0].subtotal).toEqual(30000);
     });
   });
 });

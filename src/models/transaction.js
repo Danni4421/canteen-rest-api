@@ -7,12 +7,13 @@ const transactionSchema = new mongoose.Schema({
   },
   items: [
     {
-      _id: false,
       productId: {
         type: Number,
         required: true,
-        unique: true,
-        index: true,
+        ref: 'products',
+        unique: false,
+        index: false,
+        min: 1,
       },
       amount: {
         type: Number,

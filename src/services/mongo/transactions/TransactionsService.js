@@ -1,3 +1,4 @@
+const InvariantError = require('../../../exceptions/client/InvariantError');
 const NotFoundError = require('../../../exceptions/client/NotFoundError');
 
 class TransactionsService {
@@ -5,7 +6,7 @@ class TransactionsService {
     this._model = model;
   }
 
-  async addTransaction(userId, { items }) {
+  async addTransaction(userId, items) {
     const insertedTransaction = await this._model.transaction.create({
       userId,
       items,
@@ -16,10 +17,22 @@ class TransactionsService {
       throw new Error('Gagal menambahkan transaksi');
     }
 
+    await Promise.all(
+      insertedTransaction.items.map(async (item) => [
+        await this._model.product.updateOne({
+          _id: item.productId,
+        }, {
+          $inc: {
+            amount: -item.amount,
+          },
+        }),
+      ]),
+    );
+
     return insertedTransaction._id;
   }
 
-  async getUserTransaction(userId) {
+  async getUserTransactions(userId) {
     const userTransaction = await this._model.transaction.find({
       userId,
     });
@@ -31,16 +44,42 @@ class TransactionsService {
     return userTransaction;
   }
 
-  async updateTransaction(transactionId, { status }) {
-    const updatedTransaction = await this._model.transaction.findOneAndUpdate({
+  async declineTransaction(transactionId) {
+    const declinedTransaction = await this._model.transaction.findOneAndUpdate({
       _id: transactionId,
     }, {
-      status,
+      status: 'decline',
     }, {
       new: true,
     });
 
-    if (!updatedTransaction) {
+    if (!declinedTransaction) {
+      throw new NotFoundError('Gagal memperbarui transaksi, Id tidak ditemukan.');
+    }
+
+    await Promise.all(
+      declinedTransaction.items.map(async (item) => {
+        await this._model.product.updateOne({
+          _id: item.productId,
+        }, {
+          $inc: {
+            amount: item.amount,
+          },
+        });
+      }),
+    );
+  }
+
+  async completeTransaction(transactionId) {
+    const completedTransaction = await this._model.transaction.findOneAndUpdate({
+      _id: transactionId,
+    }, {
+      status: 'done',
+    }, {
+      new: true,
+    });
+
+    if (!completedTransaction) {
       throw new NotFoundError('Gagal memperbarui transaksi, Id tidak ditemukan.');
     }
   }
@@ -53,6 +92,31 @@ class TransactionsService {
     if (!deleteTransaction) {
       throw new NotFoundError('Gagal menghapus transaksi, Id tidak ditemukan.');
     }
+  }
+
+  async verifyTransactionItems(items) {
+    const foundedProducts = await this._model.product.find({
+      _id: {
+        $in: items.map((item) => item.productId),
+      },
+    });
+
+    return items.map((item) => {
+      const product = foundedProducts.find((prod) => prod._id === item.productId);
+
+      if (!product) {
+        throw new InvariantError('Transaksi gagal, Produk tidak ada.');
+      }
+
+      if (item.amount > product.amount) {
+        throw new InvariantError('Transaksi gagal, Jumlah produk tidak cukup.');
+      }
+
+      return {
+        ...item,
+        subtotal: item.amount * product.price,
+      };
+    });
   }
 }
 
