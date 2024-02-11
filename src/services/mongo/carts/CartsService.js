@@ -34,6 +34,8 @@ class CartsService {
       userId,
     }, {
       items,
+    }, {
+      new: true,
     });
 
     if (!updatedCart) {
@@ -58,7 +60,7 @@ class CartsService {
       },
     });
 
-    const verifiedProduct = items.map((item) => {
+    return items.map((item) => {
       const product = foundedProduct.find((prod) => prod._id === item.productId);
 
       if (!product) {
@@ -74,8 +76,6 @@ class CartsService {
         subtotal: item.amount * product.price,
       };
     });
-
-    return verifiedProduct;
   }
 }
 

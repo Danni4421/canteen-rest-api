@@ -1,11 +1,9 @@
 const mongoose = require('mongoose');
 
-const cartSchema = new mongoose.Schema({
+const transactionSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Types.ObjectId,
     required: true,
-    unique: true,
-    index: true,
   },
   items: [
     {
@@ -24,9 +22,21 @@ const cartSchema = new mongoose.Schema({
       },
       subtotal: {
         type: Number,
+        required: true,
       },
     },
   ],
+  status: {
+    type: String,
+    enum: ['process', 'done', 'decline'],
+    required: true,
+  },
+}, {
+  timestamps: {
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    require: true,
+  },
 });
 
-module.exports = mongoose.model('Cart', cartSchema);
+module.exports = mongoose.model('Transaction', transactionSchema);

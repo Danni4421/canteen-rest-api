@@ -38,7 +38,7 @@ describe('Database User Model test', () => {
           firstname: 'yudi',
           lastname: 'junaidi',
         },
-        email: 'user1@kantinjti.com',
+        email: 'user1@test.com',
         password: '12345678',
         role: 'admin',
       },
@@ -48,7 +48,7 @@ describe('Database User Model test', () => {
           firstname: 'jupri',
           lastname: 'sukirman',
         },
-        email: 'user2@kantinjti.com',
+        email: 'user2@test.com',
         password: '87654321',
         role: 'user',
       },
@@ -72,7 +72,7 @@ describe('Database User Model test', () => {
       firstname: 'yudi',
       lastname: 'junaidi',
     });
-    expect(user.email).toEqual('user1@kantinjti.com');
+    expect(user.email).toEqual('user1@test.com');
     expect(user.password).toEqual('12345678');
     expect(user.role).toEqual('admin');
   });
@@ -84,7 +84,7 @@ describe('Database User Model test', () => {
         firstname: 'yuli',
         lastname: 'yulianti',
       },
-      email: 'admin1@kantinjti.com',
+      email: 'admin1@test.com',
       password: '87654321',
       role: 'admin',
     };
@@ -105,7 +105,7 @@ describe('Database User Model test', () => {
       firstname: 'yuli',
       lastname: 'yulianti',
     });
-    expect(updatedUser.email).toEqual('admin1@kantinjti.com');
+    expect(updatedUser.email).toEqual('admin1@test.com');
     expect(updatedUser.password).toEqual('87654321');
     expect(updatedUser.role).toEqual('admin');
   });

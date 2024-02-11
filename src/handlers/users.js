@@ -75,7 +75,7 @@ class UsersHandler {
 
       if (req.params.id !== req.user.id) {
         if (req.user.role !== 'admin') {
-          throw new AuthorizationError('Gagal memperbarui user, Anda tidak diperbolehkan mengubah data.');
+          throw new AuthorizationError('Gagal menghapus user, Anda tidak diperbolehkan mengubah data.');
         }
       }
 
