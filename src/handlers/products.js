@@ -1,66 +1,43 @@
 const autoBind = require('auto-bind');
-const NotFoundError = require('../exceptions/client/NotFoundError');
 
-class ProductHandler {
-  constructor(model, validator) {
-    this._model = model;
+class ProductsHandler {
+  constructor(service, validator) {
+    this._service = service;
     this._validator = validator;
 
     autoBind(this);
   }
 
   async postProductHandler(req, res, next) {
-    const lastInsertedProduct = await this._model.product.findOne({}).sort({ _id: -1 }).limit(1);
-    const id = lastInsertedProduct ? Number(lastInsertedProduct.id) + 1 : 1;
-
     try {
-      await this._validator.validatePostProductPayload(req.body);
-      await this._model.product.create({
-        _id: id,
-        ...req.body,
-      });
-
-      const insertedProduct = await this._model.product.findById(id);
-
-      if (!insertedProduct) {
-        throw new Error('Gagal menambahkan produk. Terjadi kesalahan pada server.');
-      }
+      this._validator.validatePostProductPayload(req.body);
+      const insertedProduct = await this._service.productsService.addProduct(req.body);
 
       return res.status(200).json({
         status: 'success',
         message: 'Berhasil menambahkan produk',
+        data: {
+          id: insertedProduct._id,
+        },
       });
     } catch (error) {
       next(error);
     }
   }
 
-  async getProductsHandler(req, res, next) {
-    try {
-      const products = await this._model.product.find();
+  async getProductsHandler(req, res) {
+    const products = await this._service.productsService.getProducts();
 
-      if (products.length === 0) {
-        throw new NotFoundError('Gagal mendapatkan produk. Id tidak ditemukan.');
-      }
-
-      return res.status(200).json({
-        status: 'success',
-        message: 'Berhasil mendapatkan data produk.',
-        data: products,
-      });
-    } catch (error) {
-      next(error);
-    }
+    return res.status(200).json({
+      status: 'success',
+      message: 'Berhasil mendapatkan data produk.',
+      data: products,
+    });
   }
 
   async getProductByIdHandler(req, res, next) {
     try {
-      const { id: productId } = req.params;
-      const product = await this._model.product.findById(productId);
-
-      if (!product) {
-        throw new NotFoundError('Gagal mendapatkan produk, Id tidak ditemukan.');
-      }
+      const product = await this._service.productsService.getProductById(req.params.id);
 
       return res.status(200).json({
         status: 'success',
@@ -72,17 +49,23 @@ class ProductHandler {
     }
   }
 
-  async deleteProductByIdHandler(req, res, next) {
-    const { id: productId } = req.params;
-
+  async putProductByIdHandler(req, res, next) {
     try {
-      await this._model.product.deleteOne({ _id: productId });
+      this._validator.validatePutProductPayload(req.body);
+      await this._service.productsService.updateProduct(req.params.id, req.body);
 
-      const product = await this._model.product.findById({ _id: productId });
+      return res.status(200).json({
+        status: 'success',
+        message: 'Berhasil memperbarui produk.',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 
-      if (product) {
-        throw new NotFoundError('Gagal menghapus produk. Id tidak ditemukan.');
-      }
+  async deleteProductByIdHandler(req, res, next) {
+    try {
+      await this._service.productsService.deleteProduct(req.params.id);
 
       return res.status(200).json({
         status: 'success',
@@ -94,4 +77,4 @@ class ProductHandler {
   }
 }
 
-module.exports = ProductHandler;
+module.exports = ProductsHandler;
